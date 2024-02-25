@@ -38,7 +38,7 @@
 #define EXIT_INVALID_PROGRAM_NAME 3
 
 // Verziószám, dátum, fejlesztő
-#define VERSION "1.0"
+#define VERSION "v0.1"
 #define DATE "2024. február 25."
 #define AUTHOR "Divinyi Balázs"
 
