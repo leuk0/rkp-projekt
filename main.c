@@ -54,7 +54,7 @@
 #define FLAG_HELP "--help"
 #define FLAG_VERSION "--version"
 
-// Beállított módok // Azért kell globális vátozó hogy a 'process_arguments()'-ben módosítani tudjuk az értékét és a
+// Beállított módok // Azért kell globális vátozó, mert 'process_arguments()'-ben és a 'main()'-ben is használjuk ezeket
 char *mode = MODE_RECEIVE;
 char *comm = COMM_FILE;
 #pragma endregion
