@@ -40,7 +40,7 @@
 
 // Verziószám, dátum, fejlesztő
 // v[ha kész 1].[készen lévő feladatig].[javítások]
-#define VERSION "v0.2.1"
+#define VERSION "v0.2.2"
 #define DATE "2024. február 27."
 #define AUTHOR "Divinyi Balázs"
 
