@@ -263,5 +263,6 @@ int main(int argc, char *argv[])
 
     if (debug && debug_measurements) { printf("\n" TAG_DEBUG "Mért értékek száma: %d\n", measurement_counter); }
 
+    free(measurement_values);
     return EXIT_SUCCESS;
 }
