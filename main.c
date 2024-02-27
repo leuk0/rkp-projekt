@@ -38,7 +38,7 @@
 #define EXIT_INVALID_PROGRAM_NAME 3
 
 // Verziószám, dátum, fejlesztő
-#define VERSION "v0.1"
+#define VERSION "v0.1.3"
 #define DATE "2024. február 25."
 #define AUTHOR "Divinyi Balázs"
 
@@ -55,7 +55,7 @@
 #define FLAG_VERSION "--version"
 
 // Beállított módok // Azért kell globális vátozó, mert 'process_arguments()'-ben és a 'main()'-ben is használjuk ezeket
-char *mode = MODE_RECEIVE;
+char *mode = MODE_SEND;
 char *comm = COMM_FILE;
 #pragma endregion
 
@@ -165,7 +165,7 @@ int main(int argc, char *argv[])
     // Módok tesztelése
     if (strcmp(mode, MODE_SEND) == 0)
     {
-        printf(TAG_INFO "Küldő üzemmód\n");
+        printf(TAG_DEBUG "Küldő üzemmód\n");
     }
     else if (strcmp(mode, MODE_RECEIVE) == 0)
     {
