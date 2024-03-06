@@ -13,7 +13,8 @@ A program nevének `chart`-nak kell lennie hogy futtatni lehessen
     
 ## Futtatás
 
-Ha nincs megadva kapcsoló a program alapértelmezettként a `-send` és `-file` kapcsolókat használja. A futtatás szintaxisa `./chart [kapcsolók]...`
+Ha nincs megadva kapcsoló a program alapértelmezettként a `-send` és `-file` kapcsolókat használja.  
+A futtatás szintaxisa `./chart [kapcsolók]...`
 
 ```bash
   ./chart
