@@ -42,7 +42,7 @@
 
 // Verziószám, dátum, fejlesztő
 // v[ha kész 1].[készen lévő feladatig].[javítások]
-#define VERSION "v0.3.2"
+#define VERSION "v0.3.3"
 #define DATE "2024. február 27."
 #define AUTHOR "Divinyi Balázs"
 
@@ -86,11 +86,11 @@ int debugBmp = TRUE;
 void PrintHelp()
 {
     printf("Használat:\n");
-    printf("  chart [kapcsoló(k)]\n");
+    printf("  ./chart [kapcsolók]...\n");
     printf("\nOpciók:\n");
     printf("  --version      Verziószám kiírása\n");
-    printf("  --help        Súgó kiírása\n");
-    printf("  --debug        Debug mode\n");
+    printf("  --help         Súgó kiírása\n");
+    printf("  --debug        Debug mód\n");
     printf("\nÜzemmódok:\n");
     printf("  -send          Adatok küldése (alapértelmezett)\n");
     printf("  -receive       Adatok fogadása\n");
