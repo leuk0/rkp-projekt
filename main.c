@@ -42,7 +42,7 @@
 
 // Verziószám, dátum, fejlesztő
 // v[ha kész 1].[készen lévő feladatig].[javítások]
-#define VERSION "v0.3.1"
+#define VERSION "v0.3.2"
 #define DATE "2024. február 27."
 #define AUTHOR "Divinyi Balázs"
 
@@ -187,9 +187,7 @@ int ProcessArguments(int argc, char *argv[])
 int Measurement(int **Values)
 {
     // Itt megnézzük/megkapjuk hogy az utolsó negyedóra (xx:00, xx:15, xx:30, xx:45) óta eltelt másodperceket
-    time_t calendar_object = time(NULL);
-    struct tm *tm_struct = localtime(&calendar_object);
-    int secondsFromQuarter = tm_struct->tm_hour * 3600 + tm_struct->tm_min * 60 + tm_struct->tm_sec;
+    int secondsFromQuarter = time(NULL) % 900;
 
     // Inicializálás
     srand(time(NULL));
