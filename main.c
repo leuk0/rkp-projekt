@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 #pragma Makrók / Globális változók
 // Színek
@@ -40,7 +42,7 @@
 
 // Verziószám, dátum, fejlesztő
 // v[ha kész 1].[készen lévő feladatig].[javítások]
-#define VERSION "v0.2.2"
+#define VERSION "v0.3.1"
 #define DATE "2024. február 27."
 #define AUTHOR "Divinyi Balázs"
 
@@ -62,22 +64,26 @@
 #define MEASUREMENT_MIN_TIME 100    // Hány másodperc múlva induljon tovább a generálás
 #define MEASUREMENT_MIN_COUNT 100   // Hány számot generáljon
 
+// BMP
+#define BMP_HEADER_SIZE 62
+
 // True | False
 #define TRUE 1
 #define FALSE 0
 
-// Beállított módok // Azért kell globális vátozó hogy a 'process_arguments()'-ben módosítani tudjuk az értékét és a
+// Beállított módok // Azért kell globális vátozó hogy a 'ProcessArguments()'-ben módosítani tudjuk az értékét és a
 char *mode = MODE_RECEIVE;
 char *comm = COMM_FILE;
 
 // Debug
 int debug = FALSE;
-int debug_comms_modes = TRUE;
-int debug_measurements = TRUE;
+int debugCommsModes = TRUE;
+int debugMeasurements = TRUE;
+int debugBmp = TRUE;
 #pragma endregion
 
 // Segítség kiíratása
-void print_help()
+void PrintHelp()
 {
     printf("Használat:\n");
     printf("  chart [kapcsoló(k)]\n");
@@ -93,15 +99,15 @@ void print_help()
     printf("  -socket        Socket használata\n");
 }
 
-// Ugyan az mint a 'print_help()' csak itt le is áll a program
-void print_help_then_exit()
+// Ugyan az mint a 'PrintHelp()' csak itt le is áll a program
+void PrintHelpThenExit()
 {
-    print_help();
+    PrintHelp();
     exit(EXIT_SUCCESS);
 }
 
 // Program név ellenőrzése
-void check_program_name(char *argv[])
+void CheckProgramName(char *argv[])
 {
     // Azért van szükség a './'-re, mert az kell a futtatáshoz és az is beleszámít a program nevébe
     if (strcmp(argv[0], "./chart") != 0)
@@ -112,7 +118,7 @@ void check_program_name(char *argv[])
 }
 
 // Parancssori argumentumok feldolgozása
-int process_arguments(int argc, char *argv[])
+int ProcessArguments(int argc, char *argv[])
 {
     // Itt létrehozzuk az 'i' változót amit lentebb a for ciklusokban használunk, így csak egyszer kell deklarálni
     int i;
@@ -129,8 +135,8 @@ int process_arguments(int argc, char *argv[])
     // Segítség kapcsoló ellenörzése
     if (argc > 1 && strcmp(argv[1], FLAG_HELP) == 0)
     {
-        print_help_then_exit();
-        // Ide nem kell 'return EXIT_SUCCESS' mivel a program leáll a 'print_help_then_exit()' metóduson belül
+        PrintHelpThenExit();
+        // Ide nem kell 'return EXIT_SUCCESS' mivel a program leáll a 'PrintHelpThenExit()' metóduson belül
     }
 
     // Itt megnézzük hogy az argumentumok között szerepel-e a '-send' vagy '-receive' kapcsoló
@@ -169,7 +175,7 @@ int process_arguments(int argc, char *argv[])
         if (strcmp(argv[i], MODE_SEND) != 0 && strcmp(argv[i], MODE_RECEIVE) != 0 && strcmp(argv[i], COMM_FILE) != 0 && strcmp(argv[i], COMM_SOCKET) != 0 && strcmp(argv[i], FLAG_HELP) && strcmp(argv[i], FLAG_VERSION) && strcmp(argv[i], FLAG_DEBUG))
         {
             fprintf(stderr, TAG_ERROR "Érvénytelen argumentum(ok)!\n\n");
-            print_help();
+            PrintHelp();
             return EXIT_INVALID_ARGUMENT;
         }        
     }
@@ -183,18 +189,18 @@ int Measurement(int **Values)
     // Itt megnézzük/megkapjuk hogy az utolsó negyedóra (xx:00, xx:15, xx:30, xx:45) óta eltelt másodperceket
     time_t calendar_object = time(NULL);
     struct tm *tm_struct = localtime(&calendar_object);
-    int seconds_from_quarter = tm_struct->tm_hour * 3600 + tm_struct->tm_min * 60 + tm_struct->tm_sec;
+    int secondsFromQuarter = tm_struct->tm_hour * 3600 + tm_struct->tm_min * 60 + tm_struct->tm_sec;
 
     // Inicializálás
     srand(time(NULL));
 
     // Megfelelő méretű tömb létrehozása és inicializálása 1/2
-    int measurement = (seconds_from_quarter % MEASUREMENT_TIME) + 1;
+    int measurement = (secondsFromQuarter % MEASUREMENT_TIME) + 1;
 
     // Measurement debug
-    if (debug && debug_measurements)
+    if (debug && debugMeasurements)
     {
-        printf(TAG_DEBUG "Variable: seconds_from_quarter: %d\n", seconds_from_quarter);
+        printf(TAG_DEBUG "Variable: secondsFromQuarter: %d\n", secondsFromQuarter);
         printf(TAG_DEBUG "Variable: measurement: %d\n", measurement);
     }
 
@@ -216,11 +222,11 @@ int Measurement(int **Values)
     // Értékek generálása a kért szabályoknak megfelelően
     for (int i = 1; i < measurement; i++)
     {
-        int random_number = rand() % 31 + 1; // 1-31 közötti véletlen szám generálása
+        int randomNumber = rand() % 31 + 1; // 1-31 közötti véletlen szám generálása
 
         // Az előző érték függvényében új érték generálása
-        if (random_number <= 11) { value--; }
-        else if (random_number >= 21) { value++; }
+        if (randomNumber <= 11) { value--; }
+        else if (randomNumber >= 21) { value++; }
         (*Values)[i] = value;
     }
 
@@ -228,17 +234,93 @@ int Measurement(int **Values)
     return measurement;
 }
 
+void BMPcreator(int *Values, int NumValues) 
+{
+    int imageHeight = NumValues;
+    int imageWidth = NumValues;
+
+    int fileHandle = open("chart.bmp", O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR| S_IROTH | S_IWUSR);
+    
+    if (fileHandle == -1)
+    {
+        fprintf(stderr, TAG_CRITICAL "Nem sikerült a BMP fájl megnyitása!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    unsigned int imageSize = (imageHeight * imageWidth/8)+BMP_HEADER_SIZE;
+
+    // Debug
+    if (debug && debugBmp) { printf(TAG_DEBUG "imageSize mérete: %d\n", imageSize); }
+
+    unsigned char bmpHeader[] = {0x42, 0x4d, imageSize, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                0x3e, 0x00, 0x00, 0x00, 0x28, 0x00, 0x00, 0x00, imageWidth%256, imageWidth/256,
+                                0x00, 0x00, imageHeight%256, imageHeight/256, 0x00, 0x00, 1, 0x00, 1, 0x00,
+                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x61, 0x0f,
+                                0x00, 0x00, 0x61, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                0x00, 0x00, 0x00, 0x00, 0xCD, 0x56, 0x32, 0xff, 0x32, 0xA9,
+                                0xCD, 0xff};
+    
+    for (int i = 0; i < BMP_HEADER_SIZE; i++)
+    {
+        write(fileHandle, &bmpHeader[i], sizeof(unsigned char));
+    }
+
+    int line = NumValues;
+    int colum = NumValues;
+
+
+    // Ha nem osztható, akkor a line és colum változókat a legközelebbi 32-vel osztható értékre növeli
+    // Ez biztosítja, hogy a kép sorai 32 bájt hosszúságúak legyenek, ami a hatékony feldolgozáshoz szükséges
+    if (NumValues % 32 != 0)
+    {
+        line = imageWidth + (32 - (imageWidth % 32));
+        colum = imageHeight + (32 - (imageHeight % 32));
+    }
+
+    // Ez a sor kiszámítja a kép pixeladatainak méretét bájtban (minden pixel 1 bit információt tartalmaz)
+    int pixelArraySize = (line * colum) / 8;
+
+    // Ez a sor lefoglal egy 'pixels' nevű tömböt 'pixelArraySize' méretben, és minden elemet 0-ra inicializál
+    // A 'calloc' függvényt használjuk a memória lefoglalására
+    unsigned char *pixels = calloc(pixelArraySize, sizeof(unsigned char));
+
+    int pixelMemoryLocation;
+
+    // Ez a ciklus bejárja a kép magasságát (y koordináta)
+    for (int y = 0; y < imageHeight; y++)
+    {
+        // Ez a belső ciklus bejárja a kép szélességét (x koordináta)
+        for (int x = 0; x < imageWidth; x++)
+        {
+            // Ez a sor kiszámítja a pixel memóriacímét a 'pixels' tömbben az 'x' és 'y' koordináták alapján
+            pixelMemoryLocation = (y * line + x) / 8;
+
+            // Ez ellenőrzi, hogy az aktuális y koordináta (sor) megegyezik-e a Values[x]
+            // érték (adatok tömbének x. eleme) és a height / 2 (kép magasságának fele) összegével
+            if (y == Values[x] + imageHeight / 2)
+            {
+                // Ez a sor beállítja a megfelelő pixel értékét a 'pixels' tömbben
+                pixels[pixelMemoryLocation] += (1 << (7 - (x % 8)));
+            }
+        }
+    }
+
+    write(fileHandle, pixels, pixelArraySize);
+    free(pixels);
+    close(fileHandle);                   
+}
+
 int main(int argc, char *argv[])
 {
     // Program név ellenőrzése
-    check_program_name(argv);
+    CheckProgramName(argv);
 
     // Parancssori argumentumok feldolgozása
-    int ret = process_arguments(argc, argv);
+    int ret = ProcessArguments(argc, argv);
     if (ret != EXIT_SUCCESS) { return ret; }
 
     // Módok tesztelése
-    if (debug && debug_comms_modes)
+    if (debug && debugCommsModes)
     {
         if (strcmp(mode, MODE_SEND) == 0) { printf(TAG_DEBUG "Küldő üzemmód\n"); }
         else if (strcmp(mode, MODE_RECEIVE) == 0) { printf(TAG_DEBUG "Fogadó üzemmód\n"); }
@@ -247,22 +329,23 @@ int main(int argc, char *argv[])
         if (strcmp(comm, COMM_FILE) == 0) { printf(TAG_DEBUG "Fájlal történő kommunikáció\n"); }
         else if (strcmp(comm, COMM_SOCKET) == 0) { printf(TAG_DEBUG "Socketel történő kommunikáció\n"); }
     }
-    int measurement_counter = 0;
 
+    int measurementCounter = 0;
     // Mérési értékek tárolására szolgáló tömb létrehozása és feltöltése
-    int *measurement_values;
-    int measurement = Measurement(&measurement_values);
+    int *measurementValues;
+    int measurement = Measurement(&measurementValues);
     
-    if (debug && debug_measurements) { printf(TAG_DEBUG "Mért értékek:\n"); }
+    if (debug && debugMeasurements) { printf(TAG_DEBUG "Mért értékek:\n"); }
 
     for (int i = 0; i < measurement; i++)
     {
-        if (debug && debug_measurements) { printf("%d ", measurement_values[i]); }
-        measurement_counter++;
+        if (debug && debugMeasurements) { printf("%d ", measurementValues[i]); }
+        measurementCounter++;
     }
 
-    if (debug && debug_measurements) { printf("\n" TAG_DEBUG "Mért értékek száma: %d\n", measurement_counter); }
+    if (debug && debugMeasurements) { printf("\n" TAG_DEBUG "Mért értékek száma: %d\n", measurementCounter); }
 
-    free(measurement_values);
+    BMPcreator(measurementValues, measurementCounter);
+
     return EXIT_SUCCESS;
 }
